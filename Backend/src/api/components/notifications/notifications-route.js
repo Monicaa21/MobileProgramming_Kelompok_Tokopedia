@@ -5,6 +5,7 @@ import {
   findUnreadCount,
   readNotification,
   readAllNotifications,
+  makeNotification,
 } from './notifications-controller.js';
 
 export default (app) => {
@@ -23,4 +24,6 @@ export default (app) => {
 
   // Menandai satu notifikasi sudah dibaca
   route.patch('/:id/read', readNotification);
+
+  route.post('/', makeNotification);
 };

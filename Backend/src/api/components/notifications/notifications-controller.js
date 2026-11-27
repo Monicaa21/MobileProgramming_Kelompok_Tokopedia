@@ -5,6 +5,7 @@ import {
   getUnreadCount,
   markNotificationAsRead,
   markAllNotificationsAsRead,
+  createNotification,
 } from './notifications-service.js';
 
 const allowedCategories = [
@@ -134,9 +135,55 @@ const readAllNotifications = async (req, res) => {
   }
 };
 
+//POST membuat notifikasi baru
+const makeNotification = async(req, res) => {
+  try {
+    const {
+      storeName,
+      title,
+      message,
+      category,
+      imageUrl = null,
+      relatedEntityType = null,
+      relatedEntityId = null,
+    } = req.body;
+    if (!title || !message || !allowedCategories.includes(category)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Data notifikasi tidak lengkap atau kategori tidak valid',
+      });
+    }
+
+    const notification = await createNotification({
+      storeName: storeName || 'Info Toko',
+      title,
+      message,
+      category,
+      imageUrl,
+      relatedEntityType,
+      relatedEntityId,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Notifikasi berhasil dibuat',
+      data: notification,
+    });
+  } catch (error) {
+    console.error('Create notification error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Gagal membuat notifikasi',
+    });
+  }
+};
+  
+
+
 export {
   filterNotifications,
   findUnreadCount,
   readNotification,
   readAllNotifications,
+  makeNotification,
 };
