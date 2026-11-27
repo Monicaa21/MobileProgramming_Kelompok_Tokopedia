@@ -8,19 +8,35 @@ enum NotificationCategory{
   store,
 }
 
-extension NotificationCategoryLabel on NotificationCategory {
+extension NotificationCategoryExtension on NotificationCategory {
+  String get apiValue => name;
   String get label {
     switch (this) {
       case NotificationCategory.order:
-        return 'Pesanan';
+        return 'Transaksi';
       case NotificationCategory.promo:
         return 'Promo';
       case NotificationCategory.live:
         return 'Live';
       case NotificationCategory.finance:
-        return 'Keuangan';
+        return 'Pembayaran';
       case NotificationCategory.store:
         return 'Info Toko';
+    }
+  }
+  static NotificationCategory fromApi(String? value) {
+    switch (value?.toLowerCase()) {
+      case 'order':
+        return NotificationCategory.order;
+      case 'promo':
+        return NotificationCategory.promo;
+      case 'live':
+        return NotificationCategory.live;
+      case 'finance':
+        return NotificationCategory.finance;
+      case 'store':
+      default:
+        return NotificationCategory.store;
     }
   }
 }
@@ -31,7 +47,9 @@ class NotificationData {
   final String title;
   final String message;
   final NotificationCategory category;
-  //final String? imageUrl;
+  final String? imageUrl;
+  final String? relatedEntityType;
+  final String? relatedEntityId;
   final bool isRead;
   final DateTime createdAt;
 
@@ -42,10 +60,33 @@ class NotificationData {
     required this.title,
     required this.message,
     required this.category,
-    //required this.imageUrl,
+    this.imageUrl,
     required this.isRead,
+    this.relatedEntityType,
+    this.relatedEntityId,
     required this.createdAt,
   });
+
+factory NotificationData.fromJson(Map<String, dynamic> json){
+  final rawImage = json['imageUrl']?.toString().trim();
+  final rawEntityType = json['relatedEntityType']?.toString().trim();
+  final rawEntityId = json['relatedEntityId']?.toString().trim();
+
+  return NotificationData(
+  id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+  storeName: json['storeName']?.toString().trim().isNotEmpty == true
+  ? json['storeName'].toString().trim()
+  : 'Info Toko', 
+  title: json['title']?.toString() ?? '', 
+  message: json['message']?.toString() ?? '', 
+  category: NotificationCategoryExtension.fromApi(json['category']?.toString()),
+  imageUrl: (rawImage != null && rawImage.isNotEmpty) ? rawImage : null, 
+  isRead: json['isRead'] == true, 
+  relatedEntityType: (rawEntityType != null && rawEntityType.isNotEmpty) ? rawEntityType : null,
+  relatedEntityId: (rawEntityId != null && rawEntityId.isNotEmpty) ? rawEntityId : null,
+  createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
+  );
+}
 
   NotificationData copyWith({
     bool? isRead,
@@ -56,15 +97,16 @@ class NotificationData {
       title: title, 
       message: message, 
       category: category, 
-      //imageUrl: imageUrl, 
+      imageUrl: imageUrl, 
       isRead: isRead ?? this.isRead, 
+      relatedEntityType: relatedEntityType,
+      relatedEntityId: relatedEntityId,
       createdAt: createdAt,
     );
   }
 }
 
 
-//tes layout (nanti sambungin ke data notification API)
 final List<NotificationData> notificationSamples = [
   //Notification data progress
   NotificationData(
