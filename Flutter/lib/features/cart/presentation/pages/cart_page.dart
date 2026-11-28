@@ -5,6 +5,8 @@ import 'package:aplikasi_tokped/features/checkout/presentation/widgets/product_c
 import 'package:aplikasi_tokped/features/product/presentation/pages/product_detail_page.dart';
 import 'package:aplikasi_tokped/features/profile/data/secure_storage.dart';
 import 'package:aplikasi_tokped/features/profile/presentation/pages/register_page.dart';
+import 'package:aplikasi_tokped/features/coin/data/coin_controller.dart';
+import 'package:aplikasi_tokped/features/coin/presentation/widgets/coin_icon.dart';
 
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
@@ -33,7 +35,7 @@ class CartPage extends StatelessWidget {
 
     // setiap isi keranjang berubah, halaman ini otomatis ikut ter-update
     return ListenableBuilder(
-      listenable: cart,
+      listenable: Listenable.merge([cart, CoinController.instance]),
       builder: (context, _) {
         return Scaffold(
           appBar: AppBar(
@@ -56,7 +58,13 @@ class CartPage extends StatelessWidget {
                 ),
           bottomNavigationBar: cart.isEmpty
               ? null
-              : _buildBottomBar(context, cart),
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildCoinRow(cart),
+                    _buildBottomBar(context, cart),
+                  ],
+                ),
         );
       },
     );
@@ -211,6 +219,56 @@ class CartPage extends StatelessWidget {
     );
   }
 
+  // baris "Pakai koin" di atas bar checkout
+  Widget _buildCoinRow(CartController cart) {
+    final coin = CoinController.instance;
+    // harga di keranjang satuannya ribuan, jadi dikali 1000 ke rupiah
+    final subtotal = cart.selectedTotal * 1000;
+    final discount = coin.discountFor(subtotal);
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 6, 8, 0),
+      child: Row(
+        children: [
+          const CoinIcon(size: 24),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Pakai koin (${coin.balance})',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                if (!coin.isLoggedIn)
+                  const Text(
+                    'Login dulu untuk pakai koin',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  )
+                else if (discount > 0)
+                  Text(
+                    'Hemat Rp ${formatRp(discount)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF165F42),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Switch(
+            value: coin.useCoins,
+            activeColor: const Color(0xFF165F42),
+            onChanged: coin.isLoggedIn && coin.balance > 0
+                ? (v) => coin.setUseCoins(v)
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
   // bar checkbox semua, total harga barang yang dicentang, tombol checkout
   Widget _buildBottomBar(BuildContext context, CartController cart) {
     return Container(
@@ -246,7 +304,8 @@ class CartPage extends StatelessWidget {
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   Text(
-                    formatRupiah(cart.selectedTotal),
+                    // total sudah dipotong koin (kalau switch koin nyala)
+                    'Rp ${formatRp(cart.selectedTotal * 1000 - CoinController.instance.discountFor(cart.selectedTotal * 1000))}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

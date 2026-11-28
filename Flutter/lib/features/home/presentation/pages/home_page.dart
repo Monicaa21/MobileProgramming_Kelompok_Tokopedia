@@ -4,6 +4,7 @@ import 'package:aplikasi_tokped/utils.dart';
 import 'package:aplikasi_tokped/features/product/presentation/pages/product_detail_page.dart';
 import 'package:aplikasi_tokped/features/cart/data/cart_controller.dart';
 import 'package:aplikasi_tokped/features/cart/presentation/pages/cart_page.dart';
+import 'package:aplikasi_tokped/features/coin/presentation/widgets/coin_bar.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -114,7 +115,12 @@ class _HomePageState extends State<HomePage> {
 
       // tampilin produk di halamannya
       // periksa apakah produk masih ada
-      body: FutureBuilder<List<ShoppingItem>>(
+      body: Column(
+        children: [
+          // baris koin (klaim koin) di bawah navbar
+          const CoinBar(),
+          Expanded(
+            child: FutureBuilder<List<ShoppingItem>>(
         future: _itemsFuture,
         builder: (context, snapshot) {
           // loading
@@ -167,6 +173,9 @@ class _HomePageState extends State<HomePage> {
             ),
           );
         },
+      ),
+          ),
+        ],
       ),
     );
   }

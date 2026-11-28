@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:aplikasi_tokped/core/app_colors.dart';
+import 'package:aplikasi_tokped/features/coin/data/coin_controller.dart';
+import 'package:aplikasi_tokped/features/coin/presentation/widgets/coin_icon.dart';
 import 'package:aplikasi_tokped/features/checkout/data/order_storage.dart';
 import 'package:aplikasi_tokped/features/checkout/presentation/widgets/product_card.dart';
 import 'package:aplikasi_tokped/features/profile/data/secure_storage.dart';
@@ -56,6 +58,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
       );
     }
     loadUser();
+    CoinController.instance.addListener(_onCoinChanged);
+  }
+
+  @override
+  void dispose() {
+    CoinController.instance.removeListener(_onCoinChanged);
+    super.dispose();
+  }
+
+  void _onCoinChanged() {
+    if (mounted) setState(() {});
   }
 
   void loadUser() async {
@@ -127,6 +140,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
 
     await OrderStorage.saveOrder(order);
+
+    // Mengurangi saldo koin yang kepakai buat potongan harga
+    final coin = CoinController.instance;
+    final potongan = coin.discountFor(getTotal());
+    await coin.spend(coin.coinsForDiscount(potongan));
     if (!mounted) return;
 
     showDialog(
@@ -159,7 +177,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
 
     int subtotal = getTotal();
-    int totalBayar = subtotal + ongkir;
+    final coin = CoinController.instance;
+    int coinDiscount = coin.discountFor(subtotal);
+    int totalBayar = subtotal - coinDiscount + ongkir;
     int totalQty = 0;
     for (var x in items) {
       totalQty += x.quantity;
@@ -301,6 +321,32 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             ],
                           ),
                         ),
+                        SizedBox(height: 6),
+                        Row(
+                          children: [
+                            CoinIcon(size: 22),
+                            SizedBox(width: 8),
+                            Expanded(child: Text('Pakai koin (${coin.balance})')),
+                            Switch(
+                              value: coin.useCoins,
+                              activeColor: AppColors.deepGreen,
+                              onChanged: coin.isLoggedIn && coin.balance > 0
+                                  ? (v) => coin.setUseCoins(v)
+                                  : null,
+                            ),
+                          ],
+                        ),
+                        if (coinDiscount > 0)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Potongan Koin'),
+                              Text(
+                                '- Rp ${formatRp(coinDiscount)}',
+                                style: TextStyle(color: AppColors.deepGreen),
+                              ),
+                            ],
+                          ),
                         Divider(height: 22),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
