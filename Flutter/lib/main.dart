@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:aplikasi_tokped/features/navigation/presentation/pages/navigation_menu.dart';
+import 'package:aplikasi_tokped/features/coin/data/coin_controller.dart';
+import 'package:aplikasi_tokped/features/cart/data/cart_controller.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await CoinController.instance.init();
+  await CartController.instance.init();
   runApp(const MyApp());
 }
 

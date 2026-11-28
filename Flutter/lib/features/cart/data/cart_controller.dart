@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:aplikasi_tokped/models/shopping_item.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 // Mengatur format price menjadi ada . tiap 3 digit
 String formatRupiah(int valueInThousands) {
@@ -32,7 +36,64 @@ class CartController extends ChangeNotifier {
   CartController._();
   static final CartController instance = CartController._();
 
+  static const _storage = FlutterSecureStorage();
+  static const _kCart = 'cart_data';
+
   final List<CartEntry> _entries = [];
+
+  // Dipanggil sekali di main bakal ada keranjang yang kesimpen
+  Future<void> init() async {
+    try {
+      final text = await _storage.read(key: _kCart);
+      if (text == null || text.trim().isEmpty) return;
+
+      final decoded = jsonDecode(text) as List;
+      _entries.clear();
+      for (final raw in decoded) {
+        final map = Map<String, dynamic>.from(raw as Map);
+        final item = ShoppingItem.fromJson(
+          Map<String, dynamic>.from(map['item'] as Map),
+        );
+        if (item.stock < 1) continue;
+        // jumlah dijaga ga lebih dari stok
+        final qty = ((map['quantity'] as num?)?.toInt() ?? 1).clamp(
+          1,
+          item.stock,
+        );
+        _entries.add(
+          CartEntry(
+            item: item,
+            quantity: qty,
+            isSelected: map['selected'] == true,
+          ),
+        );
+      }
+      notifyListeners();
+    } catch (e) {
+      // kalo data rusak mulai dari keranjang kosong
+      debugPrint('Gagal memuat keranjang: $e');
+      _entries.clear();
+    }
+  }
+
+  Future<void> _save() async {
+    final data = _entries
+        .map(
+          (e) => {
+            'item': e.item.toJson(),
+            'quantity': e.quantity,
+            'selected': e.isSelected,
+          },
+        )
+        .toList();
+    await _storage.write(key: _kCart, value: jsonEncode(data));
+  }
+
+  // notify + simpan tiap isi keranjang berubah
+  void _changed() {
+    notifyListeners();
+    unawaited(_save());
+  }
 
   List<CartEntry> get entries => List.unmodifiable(_entries);
   bool get isEmpty => _entries.isEmpty;
@@ -65,26 +126,26 @@ class CartController extends ChangeNotifier {
       entry.quantity++;
     }
 
-    notifyListeners();
+    _changed();
     return true;
   }
 
   void toggleSelected(CartEntry entry, bool value) {
     entry.isSelected = value;
-    notifyListeners();
+    _changed();
   }
 
   void toggleAll(bool value) {
     for (final e in _entries) {
       e.isSelected = value;
     }
-    notifyListeners();
+    _changed();
   }
 
   void increase(CartEntry entry) {
     if (entry.quantity >= entry.item.stock) return;
     entry.quantity++;
-    notifyListeners();
+    _changed();
   }
 
   // Kalau jumlah barang yang dikeranjang tinggal 1 dan didelete, barangnya dihapus dari keranjang
@@ -94,6 +155,6 @@ class CartController extends ChangeNotifier {
     } else {
       _entries.remove(entry);
     }
-    notifyListeners();
+    _changed();
   }
 }

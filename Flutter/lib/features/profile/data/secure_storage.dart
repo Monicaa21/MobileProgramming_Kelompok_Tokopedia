@@ -23,6 +23,8 @@ class ProfileStorage {
     Map<String, String> profile = await _storage.readAll();
     profile.remove('password');
     profile.remove('orders_data');
+     profile.remove('cart_data');
+    profile.removeWhere((key, _) => key.startsWith('coin_'));
     return profile;
   }
 
